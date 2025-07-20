@@ -15,7 +15,7 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-user_id = input("User ID: ")
+user_id = 1
 
 cursor.execute("""SELECT ticker, 
                SUM(quantity) 
