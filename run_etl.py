@@ -5,7 +5,6 @@ scripts = [
     "Analytics/update-positions.py",
     "Analytics/compute-performance.py",
     "Analytics/compute-risk-metrics.py",
-    "Analytics/predict-price.py"
 ]
 
 
