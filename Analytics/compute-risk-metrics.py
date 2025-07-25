@@ -5,50 +5,70 @@ import pandas as pd
 import numpy as np
 import math
 
+# Load environment variables
 load_dotenv()
 
-conn = psycopg2.connect(
-    dbname=os.getenv('POSTGRES_DB'),
-    user=os.getenv('POSTGRES_USER'),
-    password=os.getenv('POSTGRES_PASSWORD'),
-    host=os.getenv('POSTGRES_HOST'),
-    port=os.getenv('POSTGRES_PORT')
-)
-cursor = conn.cursor()
+try:
+    # Connect to PostgreSQL
+    conn = psycopg2.connect(
+        dbname=os.getenv('POSTGRES_DB'),
+        user=os.getenv('POSTGRES_USER'),
+        password=os.getenv('POSTGRES_PASSWORD'),
+        host=os.getenv('POSTGRES_HOST'),
+        port=os.getenv('POSTGRES_PORT')
+    )
+    cursor = conn.cursor()
 
-cursor.execute("DELETE FROM risk_metrics;")
-conn.commit()
+    # Clear old risk metrics
+    cursor.execute("DELETE FROM risk_metrics;")
+    conn.commit()
 
-portfolio_df = pd.read_sql_query("SELECT date, portfolio_value, daily_pnl FROM portfolio_performance;", conn)
+    # Load portfolio performance data
+    query = "SELECT date, portfolio_value, daily_pnl FROM portfolio_performance;"
+    portfolio_df = pd.read_sql_query(query, conn)
 
-daily_return_df = portfolio_df[['date']].copy()
-daily_return_df['daily_return'] = portfolio_df['daily_pnl'] / portfolio_df['portfolio_value']
-std_dev = daily_return_df['daily_return'].std()
-annual_std_dev = std_dev * math.sqrt(255) 
-annual_volatility = annual_std_dev 
-print(f"Standard deviation of annual returns: {annual_volatility}")
+    if portfolio_df.empty:
+        raise ValueError("portfolio_performance table returned no data.")
 
-annual_return = daily_return_df['daily_return'].mean() * 252
-sharpe_ratio = annual_return/annual_std_dev
-print(f"Sharpe Ratio : {sharpe_ratio}")
+    # Calculate daily returns
+    daily_return_df = portfolio_df[['date']].copy()
+    daily_return_df['daily_return'] = portfolio_df['daily_pnl'] / portfolio_df['portfolio_value']
 
-nav = portfolio_df['portfolio_value']
-rolling_max = nav.cummax()
-drawdown = (nav - rolling_max) / rolling_max
-max_drawdown = drawdown.min() 
-print(f"Max Drawdown: {max_drawdown:.2f}%")
+    # Annualized volatility
+    std_dev = daily_return_df['daily_return'].std()
+    annual_volatility = std_dev * math.sqrt(255)
+    print(f"Standard deviation of annual returns: {annual_volatility}")
 
-cursor.execute("""
-    INSERT INTO risk_metrics (annual_volatility, sharpe_ratio, max_drawdown)
-    VALUES (%s, %s, %s)
-""", (
-    annual_volatility,
-    sharpe_ratio,
-    max_drawdown
-))
+    # Sharpe ratio
+    annual_return = daily_return_df['daily_return'].mean() * 252
+    sharpe_ratio = annual_return / annual_volatility if annual_volatility != 0 else 0
+    print(f"Sharpe Ratio : {sharpe_ratio}")
 
-conn.commit()
-cursor.close()
-conn.close()
+    # Max drawdown
+    nav = portfolio_df['portfolio_value']
+    rolling_max = nav.cummax()
+    drawdown = (nav - rolling_max) / rolling_max
+    max_drawdown = drawdown.min()
+    print(f"Max Drawdown: {max_drawdown:.2%}")
 
-print("Risk metrics computation placeholder.") 
+    # Insert into risk_metrics table (cast to Python float)
+    cursor.execute("""
+        INSERT INTO risk_metrics (annual_volatility, sharpe_ratio, max_drawdown)
+        VALUES (%s, %s, %s)
+    """, (
+        float(annual_volatility),
+        float(sharpe_ratio),
+        float(max_drawdown)
+    ))
+
+    conn.commit()
+    print("Risk metrics computation completed successfully.")
+
+except Exception as e:
+    print(f"Error occurred: {e}")
+
+finally:
+    if 'cursor' in locals():
+        cursor.close()
+    if 'conn' in locals():
+        conn.close()
