@@ -20,31 +20,25 @@ jobs:
           python-version: '3.10'
 
       - name: Capture python path
-        shell: pwsh
+        shell: powershell
         run: |
           echo "PY=${{ steps.setup.outputs.python-path }}" >> $env:GITHUB_ENV
 
       - name: Debug python being used
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "python path (env): $env:PY"
           & $env:PY --version
           & $env:PY -c "import sys; print('sys.executable =', sys.executable)"
 
-      - name: Install dependencies (force, into that exact python)
-        shell: pwsh
+      - name: Install dependencies
+        shell: powershell
         run: |
           & $env:PY -m pip install --upgrade pip
-          & $env:PY -m pip install --force-reinstall pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
-          & $env:PY - << 'PYEND'
-          import sys
-          print("Using:", sys.executable)
-          import pandas, numpy, yfinance, sqlalchemy, dotenv
-          print("All imports OK")
-          PYEND
+          & $env:PY -m pip install pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
 
-      - name: Run ETL
-        shell: pwsh
+      - name: Run ETL Script
+        shell: powershell
         env:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -52,7 +46,5 @@ jobs:
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
         run: |
-          $SCRIPT = "C:\Users\tngku\OneDrive\Desktop\Investment Dashboard\run_etl.py"   # <--- CHANGE THIS
-          Write-Host "Running $SCRIPT"
-          & $env:PY "$SCRIPT"
+          & $env:PY "run_etl.py"
 
