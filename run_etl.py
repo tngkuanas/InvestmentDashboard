@@ -1,11 +1,11 @@
 import subprocess
 
 scripts = [
-    "fetch-stock-prices.py",
-    "update-positions.py",
-    "compute-performance.py",
-    "compute-risk-metrics.py",
-    "predict-price.py"
+    "Automated ETL/fetch-stock-prices.py",
+    "Analytics/update-positions.py",
+    "Analytics/compute-performance.py",
+    "Analytics/compute-risk-metrics.py",
+    "Analytics/predict-price.py"
 ]
 
 for script in scripts:
