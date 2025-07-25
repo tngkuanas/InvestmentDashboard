@@ -1,37 +1,50 @@
-name: ETL Pipeline
+name: Daily ETL
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  schedule:
+    - cron: "0 17 * * *"   # 1:00 AM MYT daily
   workflow_dispatch:
 
 jobs:
-  etl-job:
-    runs-on: ubuntu-latest
+  run-etl:
+    runs-on: self-hosted
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up Python 3.10
       - name: Set up Python
+        id: setup
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # Step 3: Install dependencies
-      - name: Install dependencies
+      - name: Capture python path
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          pip install pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
+          echo "PY=${{ steps.setup.outputs.python-path }}" >> $env:GITHUB_ENV
 
-      # Step 4: Run ETL Script
-      - name: Run ETL Script
+      - name: Debug python being used
+        shell: pwsh
+        run: |
+          Write-Host "python path (env): $env:PY"
+          & $env:PY --version
+          & $env:PY -c "import sys; print('sys.executable =', sys.executable)"
+
+      - name: Install dependencies (force, into that exact python)
+        shell: pwsh
+        run: |
+          & $env:PY -m pip install --upgrade pip
+          & $env:PY -m pip install --force-reinstall pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
+          & $env:PY - << 'PYEND'
+          import sys
+          print("Using:", sys.executable)
+          import pandas, numpy, yfinance, sqlalchemy, dotenv
+          print("All imports OK")
+          PYEND
+
+      - name: Run ETL
+        shell: pwsh
         env:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -39,4 +52,7 @@ jobs:
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
         run: |
-          python your_etl_script.py
+          $SCRIPT = "C:\Users\tngku\OneDrive\Desktop\Investment Dashboard\run_etl.py"   # <--- CHANGE THIS
+          Write-Host "Running $SCRIPT"
+          & $env:PY "$SCRIPT"
+
