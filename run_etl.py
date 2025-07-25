@@ -1,4 +1,4 @@
-import subprocess
+import subprocess, sys
 
 scripts = [
     "Automated ETL/fetch-stock-prices.py",
@@ -8,9 +8,10 @@ scripts = [
     "Analytics/predict-price.py"
 ]
 
+
 for script in scripts:
     print(f"Running {script}...")
-    subprocess.run(["python", script], check=True)
-    print(f"{script} completed.\n")
+    subprocess.run([sys.executable, script], check=True)  # <-- key change
+    print(f"{script} done.\n")
 
 print("ETL pipeline completed successfully.")
