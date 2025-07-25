@@ -1,46 +1,42 @@
-name: Daily ETL
+name: ETL Pipeline
 
 on:
-  schedule:
-    - cron: "0 17 * * *"  # 1 AM MYT
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  run-etl:
-    runs-on: self-hosted
+  etl-job:
+    runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # Step 2: Set up Python 3.10
       - name: Set up Python
-        id: setup
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # Use the same interpreter as setup-python
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
-          $PY = "${{ steps.setup.outputs.python-path }}"
-          & $PY -m pip install --upgrade pip
-          & $PY -m pip install --force-reinstall pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
-          & $PY - << 'PYEND'
-          import sys
-          print("Using Python:", sys.executable)
-          import pandas, numpy, yfinance, sqlalchemy, dotenv
-          print("All imports OK")
-          PYEND
-        shell: pwsh
+          python -m pip install --upgrade pip
+          pip install pandas numpy yfinance psycopg2-binary sqlalchemy python-dotenv matplotlib scikit-learn
 
-      - name: Run ETL
-        run: |
-          $PY = "${{ steps.setup.outputs.python-path }}"
-          & $PY run_etl.py
-        shell: pwsh
+      # Step 4: Run ETL Script
+      - name: Run ETL Script
         env:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+        run: |
+          python your_etl_script.py
